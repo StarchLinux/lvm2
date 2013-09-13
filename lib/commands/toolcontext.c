@@ -1416,30 +1416,11 @@ struct cmd_context *create_toolcontext(unsigned is_long_lived,
 			goto out;
 		}
 
-		/* nohup might set stdin O_WRONLY ! */
-		if (is_valid_fd(STDIN_FILENO) &&
-		    ((flags = fcntl(STDIN_FILENO, F_GETFL)) > 0) &&
-		    (flags & O_ACCMODE) != O_WRONLY) {
-			if (!_reopen_stream(stdin, STDIN_FILENO, "r", "stdin", &new_stream))
-				goto_out;
-			stdin = new_stream;
-			if (setvbuf(stdin, cmd->linebuffer, _IOLBF, linebuffer_size)) {
-				log_sys_error("setvbuf", "");
-				goto out;
-			}
-		}
-
-		if (is_valid_fd(STDOUT_FILENO) &&
-		    ((flags = fcntl(STDOUT_FILENO, F_GETFL)) > 0) &&
-		    (flags & O_ACCMODE) != O_RDONLY) {
-			if (!_reopen_stream(stdout, STDOUT_FILENO, "w", "stdout", &new_stream))
-				goto_out;
-			stdout = new_stream;
-			if (setvbuf(stdout, cmd->linebuffer + linebuffer_size,
-				     _IOLBF, linebuffer_size)) {
-				log_sys_error("setvbuf", "");
-				goto out;
-			}
+		if (setvbuf(stdin, cmd->linebuffer, _IOLBF, linebuffer_size) ||
+		    setvbuf(stdout, cmd->linebuffer + linebuffer_size,
+			     _IOLBF, linebuffer_size)) {
+			log_sys_error("setvbuf", "");
+			goto out;
 		}
 		/* Buffers are used for lines without '\n' */
 	} else
@@ -1747,27 +1728,8 @@ void destroy_toolcontext(struct cmd_context *cmd)
 
 #ifndef VALGRIND_POOL
 	if (cmd->linebuffer) {
-		/* Reset stream buffering to defaults */
-		if (is_valid_fd(STDIN_FILENO) &&
-		    ((flags = fcntl(STDIN_FILENO, F_GETFL)) > 0) &&
-		    (flags & O_ACCMODE) != O_WRONLY) {
-			if (_reopen_stream(stdin, STDIN_FILENO, "r", "stdin", &new_stream)) {
-				stdin = new_stream;
-				setlinebuf(stdin);
-			} else
-				cmd->linebuffer = NULL;	/* Leave buffer in place (deliberate leak) */
-		}
-
-		if (is_valid_fd(STDOUT_FILENO) &&
-		    ((flags = fcntl(STDOUT_FILENO, F_GETFL)) > 0) &&
-		    (flags & O_ACCMODE) != O_RDONLY) {
-			if (_reopen_stream(stdout, STDOUT_FILENO, "w", "stdout", &new_stream)) {
-				stdout = new_stream;
-				setlinebuf(stdout);
-			} else
-				cmd->linebuffer = NULL;	/* Leave buffer in place (deliberate leak) */
-		}
-
+		setlinebuf(stdin);
+		setlinebuf(stdout);
 		dm_free(cmd->linebuffer);
 	}
 #endif
