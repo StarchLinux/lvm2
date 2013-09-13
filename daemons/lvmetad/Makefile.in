@@ -39,7 +39,7 @@ CLDFLAGS += -L$(top_builddir)/libdaemon/server
 lvmetad: $(OBJECTS) $(top_builddir)/libdaemon/client/libdaemonclient.a \
 		    $(top_builddir)/libdaemon/server/libdaemonserver.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $(OBJECTS) \
-	$(DL_LIBS) $(LVMLIBS) $(LIBS) -rdynamic
+	$(DL_LIBS) $(LVMLIBS) $(LIBS)
 
 # TODO: No idea. No idea how to test either.
 #ifneq ("$(CFLOW_CMD)", "")

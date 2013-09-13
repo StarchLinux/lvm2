@@ -76,24 +76,17 @@ TARGETS =\
 
 TARGETS_DM = dmsetup
 
-INSTALL_LVM_TARGETS = install_tools_dynamic
-INSTALL_DMSETUP_TARGETS = install_dmsetup_dynamic
-INSTALL_CMDLIB_TARGETS = install_cmdlib_dynamic install_cmdlib_include 
-
-ifeq ("@STATIC_LINK@", "yes")
-  TARGETS += lvm.static
-  TARGETS_DM += dmsetup.static
-  INSTALL_LVM_TARGETS += install_tools_static
-  INSTALL_DMSETUP_TARGETS += install_dmsetup_static
-  INSTALL_CMDLIB_TARGETS += install_cmdlib_static
-endif
+TARGETS += lvm
+TARGETS_DM += dmsetup
+INSTALL_LVM_TARGETS = install_tools_static
+INSTALL_DMSETUP_TARGETS = install_dmsetup_static
+INSTALL_CMDLIB_TARGETS = install_cmdlib_static
 
 LVMLIBS = $(LVMINTERNAL_LIBS)
 LIB_VERSION = $(LIB_VERSION_LVM)
 
-CLEAN_TARGETS = liblvm2cmd.$(LIB_SUFFIX) $(TARGETS_DM) \
-	liblvm2cmd.$(LIB_SUFFIX).$(LIB_VERSION) lvm-static.o \
-	liblvm2cmd-static.a dmsetup.static lvm.static
+CLEAN_TARGETS = liblvm2cmd.$(LIB_SUFFIX) $(TARGETS_DM) lvm-static.o \
+	liblvm2cmd-static.a dmsetup lvm
 
 ifeq ("@CMDLIB@", "yes")
 	TARGETS += liblvm2cmd.$(LIB_SUFFIX).$(LIB_VERSION)
@@ -121,25 +114,17 @@ LIBS += $(UDEV_LIBS)
 
 device-mapper: $(TARGETS_DM)
 
-dmsetup: dmsetup.o $(top_builddir)/libdm/libdevmapper.$(LIB_SUFFIX)
-	$(CC) $(CFLAGS) $(LDFLAGS) -L$(top_builddir)/libdm \
-	      -o $@ dmsetup.o -ldevmapper $(LIBS)
-
-dmsetup.static: dmsetup.o $(interfacebuilddir)/libdevmapper.a
+dmsetup: dmsetup.o $(interfacebuilddir)/libdevmapper.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -static -L$(interfacebuilddir) \
 	      -o $@ dmsetup.o -ldevmapper $(STATIC_LIBS) $(LIBS)
 
 all: device-mapper
 
-lvm: $(OBJECTS) lvm.o $(top_builddir)/lib/liblvm-internal.a
-	$(CC) $(CFLAGS) $(LDFLAGS) $(ELDFLAGS) -o $@ $(OBJECTS) lvm.o \
-		$(LVMLIBS) $(READLINE_LIBS) $(LIBS) -rdynamic
-
 ifeq ("@BUILD_LVMETAD@", "yes")
 lvm: $(top_builddir)/libdaemon/client/libdaemonclient.a
 endif
 
-lvm.static: $(OBJECTS) lvm-static.o $(top_builddir)/lib/liblvm-internal.a  $(interfacebuilddir)/libdevmapper.a
+lvm: $(OBJECTS) lvm-static.o $(top_builddir)/lib/liblvm-internal.a  $(interfacebuilddir)/libdevmapper.a
 	$(CC) $(CFLAGS) $(LDFLAGS) -static -L$(interfacebuilddir) -o $@ \
 	      $(OBJECTS) lvm-static.o $(LVMLIBS) $(STATIC_LIBS) $(LIBS)
 
@@ -151,15 +136,6 @@ liblvm2cmd-static.a: $(top_builddir)/lib/liblvm-internal.a $(OBJECTS) lvmcmdlib.
 	cat $(top_builddir)/lib/liblvm-internal.a > $@
 	$(AR) rs $@ $(OBJECTS) lvmcmdlib.o lvm2cmd-static.o
 
-liblvm2cmd.$(LIB_SUFFIX): liblvm2cmd.a $(LDDEPS)
-	$(CC) -shared -Wl,-soname,$@.$(LIB_VERSION) \
-		$(CFLAGS) $(CLDFLAGS) -o $@ \
-		@CLDWHOLEARCHIVE@ liblvm2cmd.a @CLDNOWHOLEARCHIVE@ \
-		$(LVMLIBS) $(LIBS)
-
-liblvm2cmd.$(LIB_SUFFIX).$(LIB_VERSION): liblvm2cmd.$(LIB_SUFFIX)
-	$(LN_S) -f $< $@
-
 .commands: $(srcdir)/commands.h $(srcdir)/cmdnames.h Makefile
 	$(CC) -E -P $(srcdir)/cmdnames.h 2> /dev/null | \
 		egrep -v '^ *(|#.*|dumpconfig|formats|help|pvdata|segtypes|version) *$$' > .commands
@@ -170,36 +146,19 @@ CFLOW_SOURCES = $(addprefix $(srcdir)/, $(SOURCES))
 -include $(top_builddir)/lib/liblvm-internal.cflow
 endif
 
-.PHONY: install_cmdlib_dynamic install_cmdlib_static install_cmdlib_include \
-	install_tools_dynamic install_tools_static \
-	install_dmsetup_dynamic install_dmsetup_static
+.PHONY: install_cmdlib_static install_cmdlib_include \
+	install_tools_static install_dmsetup_static
 
 install_cmdlib_include: $(srcdir)/lvm2cmd.h
 	$(INSTALL_DATA) -D $< $(includedir)/$(<F)
 
-install_cmdlib_dynamic: liblvm2cmd.$(LIB_SUFFIX)
-	$(INSTALL_PROGRAM) -D $< $(libdir)/$(<F).$(LIB_VERSION)
-	$(INSTALL_DIR) $(usrlibdir)
-	$(LN_S) -f $(USRLIB_RELPATH)$(<F).$(LIB_VERSION) $(usrlibdir)/$(<F)
-
 install_cmdlib_static: liblvm2cmd-static.a
 	$(INSTALL_DATA) -D $< $(usrlibdir)/liblvm2cmd.a
 
-install_tools_dynamic: lvm .commands
-	$(INSTALL_PROGRAM) -D lvm $(sbindir)/lvm
-	@echo Creating symbolic links for individual commands in $(sbindir)
-	@for v in `cat .commands`; do \
-		echo "$(LN_S) -f lvm $(sbindir)/$$v"; \
-		$(LN_S) -f lvm $(sbindir)/$$v; \
-	done;
-
-install_tools_static: lvm.static
+install_tools_static: lvm
 	$(INSTALL_PROGRAM) -D $< $(staticdir)/$(<F)
 
-install_dmsetup_dynamic: dmsetup
-	$(INSTALL_PROGRAM) -D $< $(sbindir)/$(<F)
-
-install_dmsetup_static: dmsetup.static
+install_dmsetup_static: dmsetup
 	$(INSTALL_PROGRAM) -D $< $(staticdir)/$(<F)
 
 install_device-mapper: $(INSTALL_DMSETUP_TARGETS)

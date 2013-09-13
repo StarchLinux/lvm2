@@ -38,13 +38,8 @@ ifeq ("@VALGRIND_POOL@", "yes")
 INCLUDES += @VALGRIND_CFLAGS@
 endif
 
-ifeq ("@STATIC_LINK@", "yes")
 LIB_STATIC = $(interface)/libdevmapper.a
-endif
-
-LIB_SHARED = $(interface)/libdevmapper.$(LIB_SUFFIX)
 LIB_VERSION = $(LIB_VERSION_DM)
-TARGETS += libdevmapper.$(LIB_SUFFIX) libdevmapper.$(LIB_SUFFIX).$(LIB_VERSION)
 
 CFLOW_LIST = $(SOURCES)
 CFLOW_LIST_TARGET = libdevmapper.cflow
@@ -61,18 +56,11 @@ LIBS += $(SELINUX_LIBS) $(UDEV_LIBS)
 
 device-mapper: all
 
-libdevmapper.$(LIB_SUFFIX) libdevmapper.$(LIB_SUFFIX).$(LIB_VERSION): $(LIB_SHARED)
-	$(LN_S) -f $< $@
-
-.PHONY: install_dynamic install_static install_include \
+.PHONY: install_static install_include \
 	install_ioctl install_ioctl_static \
 	install_pkgconfig
 
-INSTALL_TYPE = install_dynamic
-
-ifeq ("@STATIC_LINK@", "yes")
-  INSTALL_TYPE += install_static
-endif
+INSTALL_TYPE = install_static
 
 ifeq ("@PKGCONFIG@", "yes")
   INSTALL_TYPE += install_pkgconfig
@@ -85,11 +73,7 @@ install_device-mapper: install
 install_include: $(srcdir)/libdevmapper.h
 	$(INSTALL_DATA) -D $< $(includedir)/$(<F)
 
-install_dynamic: install_@interface@
-
 install_static: install_@interface@_static
-
-install_ioctl: install_lib_shared
 
 install_pkgconfig: libdevmapper.pc
 	$(INSTALL_DATA) -D $< $(pkgconfigdir)/devmapper.pc

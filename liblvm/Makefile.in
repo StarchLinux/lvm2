@@ -27,11 +27,7 @@ SOURCES =\
 LIB_NAME = liblvm2app
 LIB_VERSION = $(LIB_VERSION_APP)
 
-ifeq ("@STATIC_LINK@", "yes")
-  LIB_STATIC = $(LIB_NAME).a
-endif
-
-LIB_SHARED = $(LIB_NAME).$(LIB_SUFFIX)
+LIB_STATIC = $(LIB_NAME).a
 
 CLEAN_TARGETS += liblvm.cflow $(LIB_NAME).a
 
@@ -48,13 +44,9 @@ ifeq ("@DMEVENTD@", "yes")
   LIBS += -ldevmapper-event
 endif
 
-.PHONY: install_dynamic install_static install_include install_pkgconfig
+.PHONY: install_static install_include install_pkgconfig
 
-INSTALL_TYPE = install_dynamic
-
-ifeq ("@STATIC_LINK@", "yes")
-  INSTALL_TYPE += install_static
-endif
+INSTALL_TYPE = install_static
 
 ifeq ("@PKGCONFIG@", "yes")
   INSTALL_TYPE += install_pkgconfig
@@ -64,8 +56,6 @@ install: $(INSTALL_TYPE) install_include
 
 install_include: $(srcdir)/lvm2app.h
 	$(INSTALL_DATA) -D $< $(includedir)/$(<F)
-
-install_dynamic: install_lib_shared
 
 install_static: $(LIB_STATIC)
 	$(INSTALL_DATA) -D $< $(usrlibdir)/$(<F)
